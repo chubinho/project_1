@@ -1,0 +1,9 @@
+aiosqlite=0.21.0
+bcrypt==4.0.1
+dotenv==0.9.9
+email-validator==2.3.0
+fastapi==0.121.0
+passlib==1.7.4
+python-jose==3.5.0
+sqlalchemy==2.0.44
+uvicorn==0.38.0
