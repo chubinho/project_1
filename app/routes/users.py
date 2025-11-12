@@ -1,0 +1,87 @@
+from fastapi import APIRouter, Depends, HTTPException, Response, Request
+from sqlalchemy import select
+from jose import JWTError
+from datetime import timedelta
+from typing import Annotated
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..models import User
+from ..schemas import UserRegister, UserLogin, UserOut
+from ..database import get_session
+from ..auth import create_token, verify_password, hash_password
+from ..config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, SECRET_KEY, ALGORITHM
+
+router = APIRouter()
+
+sessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+@router.post("/register")
+async def register(user: UserRegister, session: sessionDep):
+    existing = await session.scalar(select(User).where(User.email == user.email))
+    if existing:
+        raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
+
+    new_user = User(email=user.email, password_hash=hash_password(user.password))
+    session.add(new_user)
+    await session.commit()
+
+    return {"success": True, "message": "Пользователь зарегистрирован"}
+
+@router.post("/login")
+async def login(response: Response, data: UserLogin, session: sessionDep):
+    user = await session.scalar(select(User).where(User.email == data.email))
+    if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Неверный email или пароль")
+
+    access_token = create_token({"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    refresh_token = create_token({"sub": str(user.id)}, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+
+    response.set_cookie(key="access_token", value=access_token, httponly=True)
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
+
+    return {"success": True, "message": "Вход выполнен"}
+
+@router.get("/refresh")
+async def refresh_token(request: Request, response: Response):
+    from jose import jwt
+
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Нет refresh токена")
+
+    try:
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Недействительный refresh токен")
+
+    user_id = payload.get("sub")
+    new_access = create_token({"sub": user_id}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    response.set_cookie(key="access_token", value=new_access, httponly=True)
+
+    return {"success": True, "message": "Access токен обновлён"}
+
+@router.get("/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return {"success": True, "message": "Вы вышли"}
+
+@router.get("/me", response_model=UserOut)
+async def get_me(request: Request, session: sessionDep):
+    from jose import jwt
+
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Нет access токена")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Токен недействителен или истёк")
+
+    user_id = payload.get("sub")
+    user = await session.get(User, int(user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    return user
