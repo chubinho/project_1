@@ -16,8 +16,8 @@ DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT
 if not all([DB_USER, DB_PASSWORD, DB_NAME]):
     raise ValueError("Отсутсвуют необходимые переменные для БД")
 
-engine = create_async_engine(DATABASE_URL, echo=True)
-new_session = async_sessionmaker(engine, expire_on_commit=False)
+engine = create_async_engine(DATABASE_URL)
+new_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)    
 
 class Base(DeclarativeBase):
     pass

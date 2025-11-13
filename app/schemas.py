@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, Literal
 
 
 class UserRegister(BaseModel):
@@ -22,6 +22,23 @@ class UserOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class AdCreate(BaseModel):
+    status: Literal["lost", "found"]
+    type: Literal["dog", "cat"]
+    breed: Literal["labrador", "german_shepherd", "poodle", "metis"]
+    color: str
+    size: Literal["little", "medium", "big"]
+    distincts: Optional[str] = None
+    nickname: Optional[str] = None
+    danger: Literal["danger", "safe", "unknown"]
+    location: str
+    geoLocation: str 
+    time: str 
+    contactName: str
+    contactPhone: str
+    contactEmail: EmailStr
+    extras: Optional[str] = None
         
 class AdOut(BaseModel):
     id: int

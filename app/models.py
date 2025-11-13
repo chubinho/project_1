@@ -21,18 +21,17 @@ class Ad(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
 
-    status: Mapped[str] = mapped_column(String(10))         
-    type: Mapped[str] = mapped_column(String(30))           
-    breed: Mapped[str] = mapped_column(String(30))           
+    status: Mapped[str] = mapped_column(String(10))
+    type: Mapped[str] = mapped_column(String(10))
+    breed: Mapped[str] = mapped_column(String(30))
     color: Mapped[str] = mapped_column(String(20))
-    size: Mapped[str] = mapped_column(String(10))            
+    size: Mapped[str] = mapped_column(String(10))
     distincts: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    nickname: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
-    danger: Mapped[str] = mapped_column(String(30))         
+    nickname: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    danger: Mapped[str] = mapped_column(String(10))
     location: Mapped[str] = mapped_column(String(100))
-    geoLocation: Mapped[str] = mapped_column(String(30))
+    geoLocation: Mapped[str] = mapped_column(String(50))
     time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-
     contactName: Mapped[str] = mapped_column(String(50))
     contactPhone: Mapped[str] = mapped_column(String(20))
     contactEmail: Mapped[str] = mapped_column(String(100))
@@ -40,6 +39,5 @@ class Ad(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        nullable=False
+        default=lambda: datetime.now(timezone.utc)
     )
