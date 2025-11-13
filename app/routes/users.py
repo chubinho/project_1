@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from sqlalchemy import select
-from jose import JWTError
+from jose import JWTError, jwt
 from datetime import timedelta
 from typing import Annotated
+from ..dependencies import get_current_user
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
 import random
 from ..models import User
-from ..schemas import UserRegister, UserLogin, UserOut
+from ..schemas import UserRegister, UserLogin, UserOut, UpdateEmail, UpdateName
 from ..database import get_session
 from ..auth import create_token, verify_password, hash_password
 from ..config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, SECRET_KEY, ALGORITHM
@@ -119,4 +119,33 @@ async def get_user(request: Request, session: sessionDep):
             "phone": user.phone,
         }
     }
-    
+
+userDep = Annotated[User, Depends(get_current_user)]
+
+
+@router.put("/user/name")
+async def update_name(
+    data: UpdateName,
+    session: sessionDep,
+    current_user: userDep
+):
+    current_user.name = data.name
+    await session.commit()
+    return {"success": True}
+
+
+@router.put("/user/email")
+async def update_email(
+    data: UpdateEmail,
+    session: sessionDep,
+    current_user: userDep,
+):
+    existing = await session.scalar(
+        select(User).where(User.email == data.email)
+    )
+    if existing and existing.id != current_user.id:
+        return {"success": False, "message": "Email уже занят"}
+
+    current_user.email = data.email
+    await session.commit()
+    return {"success": True}

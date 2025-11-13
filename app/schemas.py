@@ -43,3 +43,9 @@ class AdOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class UpdateName(BaseModel):
+    name: str = Field(min_length=1,max_length=50)
+
+class UpdateEmail(BaseModel):
+    email: EmailStr
