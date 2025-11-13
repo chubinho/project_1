@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from .database import engine, Base
 from .routes import users
+from .models import User
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,4 +23,3 @@ app.add_middleware(
 )
 app.include_router(users.router)
 
-print("Зарегистрированные роуты:", [route.path for route in app.routes])
