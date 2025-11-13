@@ -17,7 +17,7 @@ async def get_ads(
     breed: Optional[str] = None,
     size: Optional[str] = None,
     danger: Optional[str] = None,
-    session: sessionDep = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     try:
         query = select(Ad)

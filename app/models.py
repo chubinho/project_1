@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, String, Text, ForeignKey
 from .database import Base
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 class User(Base):
@@ -13,36 +13,33 @@ class User(Base):
     phone: Mapped[Optional[str]] = mapped_column(nullable=True)
     name: Mapped[Optional[str]] = mapped_column(nullable=True)
     role: Mapped[str] = mapped_column(default="user")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=datetime.utcnow,nullable=False)
-
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=lambda: datetime.now(timezone.utc),nullable=False)
 
 class Ad(Base):
     __tablename__ = "ads"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column()
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
 
-    status: Mapped[int] = mapped_column()
-    type: Mapped[int] = mapped_column()
-    breed: Mapped[int] = mapped_column()
-    color: Mapped[int] = mapped_column()
-    size: Mapped[int] = mapped_column()
-    distincs: Mapped[Optional[int]] = mapped_column(nullable=True)
-    nickname: Mapped[Optional[int]] = mapped_column(nullable=True)
-    danger: Mapped[int] = mapped_column()
-    location: Mapped[int] = mapped_column()
-    geoLocation: Mapped[int] = mapped_column()
-    time: Mapped[int] = mapped_column()
+    status: Mapped[str] = mapped_column(String(10))         
+    type: Mapped[str] = mapped_column(String(30))           
+    breed: Mapped[str] = mapped_column(String(30))           
+    color: Mapped[str] = mapped_column(String(20))
+    size: Mapped[str] = mapped_column(String(10))            
+    distincts: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    nickname: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    danger: Mapped[str] = mapped_column(String(30))         
+    location: Mapped[str] = mapped_column(String(100))
+    geoLocation: Mapped[str] = mapped_column(String(30))
+    time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
-    contactName: Mapped[str]
-    contactPhone: Mapped[str]
-    contactEmail: Mapped[str]
-    extras: Mapped[Optional[str]] = mapped_column(nullable=True)
+    contactName: Mapped[str] = mapped_column(String(50))
+    contactPhone: Mapped[str] = mapped_column(String(20))
+    contactEmail: Mapped[str] = mapped_column(String(100))
+    extras: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
         nullable=False
     )
-
-
