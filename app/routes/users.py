@@ -4,7 +4,7 @@ from jose import JWTError
 from datetime import timedelta
 from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
-
+import random
 from ..models import User
 from ..schemas import UserRegister, UserLogin, UserOut
 from ..database import get_session
@@ -15,31 +15,52 @@ router = APIRouter()
 
 sessionDep = Annotated[AsyncSession, Depends(get_session)]
 
+names = ["Альфа", "Барсик", "Крош", "Стрелка", "Мурзик"]
+
+
 @router.post("/register")
 async def register(user: UserRegister, session: sessionDep):
     existing = await session.scalar(select(User).where(User.email == user.email))
     if existing:
-        raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
+        raise HTTPException(
+            status_code=400, detail="Email уже зарегистрирован")
 
-    new_user = User(email=user.email, password_hash=hash_password(user.password))
+    user_name = user.name
+    if not user_name:
+        name = random.choice(names)
+        num = random.randint(1, 999)
+        user_name = f"{name}{num}"
+    new_user = User(
+        email=user.email,
+        password_hash=hash_password(user.password),
+        phone=user.phone,
+        name=user_name,
+        role="user",
+    )
     session.add(new_user)
     await session.commit()
 
     return {"success": True, "message": "Пользователь зарегистрирован"}
 
+
 @router.post("/login")
 async def login(response: Response, data: UserLogin, session: sessionDep):
     user = await session.scalar(select(User).where(User.email == data.email))
     if not user or not verify_password(data.password, user.password_hash):
-        raise HTTPException(status_code=400, detail="Неверный email или пароль")
+        raise HTTPException(
+            status_code=400, detail="Неверный email или пароль")
 
-    access_token = create_token({"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    refresh_token = create_token({"sub": str(user.id)}, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    access_token = create_token({"sub": str(user.id)}, timedelta(
+        minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    refresh_token = create_token(
+        {"sub": str(user.id)}, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
 
     response.set_cookie(key="access_token", value=access_token, httponly=True)
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
+    response.set_cookie(key="refresh_token",
+                        value=refresh_token, httponly=True)
 
     return {"success": True, "message": "Вход выполнен"}
+
 
 @router.get("/refresh")
 async def refresh_token(request: Request, response: Response):
@@ -52,13 +73,16 @@ async def refresh_token(request: Request, response: Response):
     try:
         payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
-        raise HTTPException(status_code=401, detail="Недействительный refresh токен")
+        raise HTTPException(
+            status_code=401, detail="Недействительный refresh токен")
 
     user_id = payload.get("sub")
-    new_access = create_token({"sub": user_id}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    new_access = create_token({"sub": user_id}, timedelta(
+        minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     response.set_cookie(key="access_token", value=new_access, httponly=True)
 
     return {"success": True, "message": "Access токен обновлён"}
+
 
 @router.get("/logout")
 async def logout(response: Response):
@@ -66,8 +90,9 @@ async def logout(response: Response):
     response.delete_cookie("refresh_token")
     return {"success": True, "message": "Вы вышли"}
 
-@router.get("/me", response_model=UserOut)
-async def get_me(request: Request, session: sessionDep):
+
+@router.get("/user")
+async def get_user(request: Request, session: sessionDep):
     from jose import jwt
 
     token = request.cookies.get("access_token")
@@ -77,11 +102,19 @@ async def get_me(request: Request, session: sessionDep):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
-        raise HTTPException(status_code=401, detail="Токен недействителен или истёк")
+        raise HTTPException(
+            status_code=401, detail="Токен недействителен или истёк")
 
     user_id = payload.get("sub")
     user = await session.get(User, int(user_id))
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    return user
+    return {
+        "user": {
+            "name": user.name,
+            "date": user.created_at.strftime("%d.%m.%Y"),
+            "email": user.email,
+            "phone": user.phone,
+        }
+    }
