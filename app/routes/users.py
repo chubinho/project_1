@@ -4,6 +4,7 @@ from jose import JWTError
 from datetime import timedelta
 from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
 import random
 from ..models import User
 from ..schemas import UserRegister, UserLogin, UserOut
