@@ -22,3 +22,24 @@ class UserOut(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class AdOut(BaseModel):
+    id: int
+    status: str
+    type: str
+    breed: str
+    color: str
+    size: str
+    distincts: Optional[str]
+    nickname: Optional[str]
+    danger: str
+    location: str
+    geoLocation: str
+    time: str
+    contactName: str
+    contactPhone: str
+    contactEmail: str
+    extras: Optional[str]
+
+    class Config:
+        from_attributes = True
