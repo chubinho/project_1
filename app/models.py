@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import DateTime, String, Text, ForeignKey
-from .database import Base
+from sqlalchemy import DateTime, String, Text, ForeignKey, ARRAY
+from database import Base
 from datetime import datetime, timezone
 from typing import Optional
+
 
 class User(Base):
     __tablename__ = "users"
@@ -10,10 +11,15 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(unique=True)
     password_hash: Mapped[str]
-    phone: Mapped[Optional[str]] = mapped_column(nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(default="")
     name: Mapped[Optional[str]] = mapped_column(nullable=True)
     role: Mapped[str] = mapped_column(default="user")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=lambda: datetime.now(timezone.utc),nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
 
 class Ad(Base):
     __tablename__ = "ads"
@@ -29,8 +35,8 @@ class Ad(Base):
     distincts: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     nickname: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     danger: Mapped[str] = mapped_column(String(10))
-    location: Mapped[str] = mapped_column(String(100))
-    geoLocation: Mapped[str] = mapped_column(String(50))
+    location: Mapped[str] = mapped_column(String(100), nullable=True)
+    geoLocation: Mapped[ARRAY[str]] = mapped_column(ARRAY(String, as_tuple=True), nullable=True)
     time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     contactName: Mapped[str] = mapped_column(String(50))
     contactPhone: Mapped[str] = mapped_column(String(20))
@@ -38,6 +44,5 @@ class Ad(Base):
     extras: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
