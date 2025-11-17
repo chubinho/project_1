@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, Literal
+from typing import Optional, Literal, List
+from datetime import datetime
 
 
 class UserRegister(BaseModel):
@@ -32,9 +33,9 @@ class AdCreate(BaseModel):
     distincts: Optional[str] = None
     nickname: Optional[str] = None
     danger: Literal["danger", "safe", "unknown"]
-    location: str
-    geoLocation: str 
-    time: str 
+    location: Optional[str] = None  # may be null due to errors when fetching string location from front
+    geoLocation: Optional[List[str]] = None  # may be null due to errors when fetching geoLocation from front
+    time: str
     contactName: str
     contactPhone: str
     contactEmail: EmailStr
@@ -50,9 +51,9 @@ class AdOut(BaseModel):
     distincts: Optional[str]
     nickname: Optional[str]
     danger: str
-    location: str
-    geoLocation: str
-    time: str
+    location: Optional[str]
+    geoLocation: Optional[List[str]]
+    time: datetime
     contactName: str
     contactPhone: str
     contactEmail: str

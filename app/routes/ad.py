@@ -4,19 +4,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Annotated
 from datetime import datetime
 
-from ..dependencies import get_current_user
-from ..database import get_session
-from ..models import Ad, User
-from ..schemas import AdOut, AdCreate
+from dependencies import get_current_user
+from database import get_session
+from models import Ad, User
+from schemas import AdOut, AdCreate
 
 router = APIRouter()
 sessionDep = Annotated[AsyncSession, Depends(get_session)]
 userDep = Annotated[User, Depends(get_current_user)]
 
-@router.post("/ads")
+@router.post("/ads/create")
 async def create_ad(data: AdCreate, session: sessionDep, current_user: userDep):
     try:
-        time_obj = datetime.strptime(data.time, "%d.%m.%Y %H:%M:%S")
+        time_obj = datetime.strptime(data.time, "%d.%m.%Y %H:%M")
     except ValueError:
         return {"success": False, "message": "Неверный формат времени"}
 
@@ -45,7 +45,7 @@ async def create_ad(data: AdCreate, session: sessionDep, current_user: userDep):
 
     return {"success": True, "ad_id": ad.id}
 
-@router.get("/ads")
+@router.post("/ads/get")
 async def get_ads(
     status: Optional[str] = None,
     type: Optional[str] = None,

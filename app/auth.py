@@ -1,7 +1,7 @@
 from jose import jwt, JWTError
 from passlib.hash import bcrypt
 from datetime import datetime, timedelta, timezone
-from .config import SECRET_KEY, ALGORITHM
+from config import SECRET_KEY, ALGORITHM
 
 
 def create_token(data: dict, expires_delta: timedelta):

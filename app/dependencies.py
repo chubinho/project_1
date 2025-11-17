@@ -1,9 +1,9 @@
 from fastapi import Depends, HTTPException, Request
 from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
-from .database import get_session
-from .models import User
-from .config import SECRET_KEY, ALGORITHM
+from database import get_session
+from models import User
+from config import SECRET_KEY, ALGORITHM
 
 async def get_current_user(request: Request, session: AsyncSession = Depends(get_session)):
     token = request.cookies.get("access_token")
