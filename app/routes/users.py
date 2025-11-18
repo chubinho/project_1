@@ -103,8 +103,7 @@ async def get_user(request: Request, session: sessionDep):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
-        raise HTTPException(
-            status_code=401, detail="Токен недействителен или истёк")
+        raise HTTPException(status_code=401, detail="Токен недействителен или истёк")
 
     user_id = payload.get("sub")
     user = await session.get(User, int(user_id))
