@@ -28,3 +28,15 @@ async def send_verification_email(email: str, token: str):
         server.starttls()
         server.login(SMTP_USER, SMTP_PASSWORD)
         server.sendmail(EMAIL_FROM, email, msg.as_string())
+
+async def send_verification_email_change(new_email: str, token: str):
+    link = f"{APP_URL}/user/verify-email-change?token={token}"
+    msg = MIMEText(f"Подтвердите смену email, перейдя по ссылке: {link}")
+    msg['Subject'] = "Подтверждение смены email для FindYourPet"
+    msg['From'] = EMAIL_FROM
+    msg['To'] = new_email
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.sendmail(EMAIL_FROM, new_email, msg.as_string())

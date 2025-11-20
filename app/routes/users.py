@@ -9,7 +9,7 @@ import random
 from models import User
 from schemas import UserRegister, UserLogin, UpdateEmail, UpdateName, UpdatePhone, UpdatePassword
 from database import get_session
-from auth import create_token, verify_password, hash_password, send_verification_email
+from auth import create_token, verify_password, hash_password, send_verification_email, send_verification_email_change
 from config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, SECRET_KEY, ALGORITHM
 
 router = APIRouter()
@@ -172,7 +172,6 @@ async def update_name(
 @router.put("/user/email")
 async def update_email(
     data: UpdateEmail,
-    response: Response,
     session: sessionDep,
     current_user: userDep,
 ):
@@ -181,13 +180,15 @@ async def update_email(
     )
     if existing and existing.id != current_user.id:
         return {"success": False, "message": "Email уже занят"}
-    
-    # ПРИСЫЛАТЬ ВЕРИФИКАЦИЮ НА НОВУЮ ПОЧТУ
 
-    response.delete_cookie('access_token')
-    response.delete_cookie('refresh_token')
+    change_token = create_token(
+        {"sub": str(current_user.id), "new_email": data.email, "type": "email_change"},
+        timedelta(minutes=30)
+    )
 
-    return {"success": True}
+    await send_verification_email_change(data.email, change_token)
+
+    return {"success": True, "message": "Подтвердите смену email на новой почте"}
 
 @router.put("/user/phone")
 async def update_phone(
@@ -211,3 +212,36 @@ async def update_password(
     current_user.password_hash = hash_password(data.newPassword)
     await session.commit()
     return {"success": True}
+
+@router.get("/user/verify-email-change")
+async def verify_email_change(token: str, session: sessionDep, response: Response):
+    if not token:
+        raise HTTPException(status_code=400, detail="Токен не передан")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "email_change":
+            raise HTTPException(status_code=400, detail="Неверный тип токена")
+        user_id = int(payload["sub"])
+        new_email = payload["new_email"]
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Неверный или истёкший токен")
+
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    if new_email == user.email:
+        return {"success": False, "message": "Новая почта совпадает с текущей"}
+
+    existing = await session.scalar(select(User).where(User.email == new_email))
+    if existing and existing.id != user.id:
+        raise HTTPException(status_code=400, detail="Email уже занят")
+
+    user.email = new_email
+    await session.commit()
+
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+
+    return {"success": True, "message": "Email успешно изменён"}
