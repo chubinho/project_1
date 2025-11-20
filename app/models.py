@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import DateTime, String, Text, ForeignKey, ARRAY
+from sqlalchemy import DateTime, String, Text, ForeignKey, ARRAY, Integer
 from database import Base
 from datetime import datetime, timezone
 from typing import Optional
@@ -14,7 +14,6 @@ class User(Base):
     phone: Mapped[Optional[str]] = mapped_column(default="")
     name: Mapped[Optional[str]] = mapped_column(nullable=True)
     role: Mapped[str] = mapped_column(default="user")
-    is_verified: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -37,7 +36,7 @@ class Ad(Base):
     nickname: Mapped[str] = mapped_column(String(50), default='')
     danger: Mapped[str] = mapped_column(String(10))
     location: Mapped[str] = mapped_column(String(100), default='')
-    geoLocation: Mapped[ARRAY[str]] = mapped_column(ARRAY(String, as_tuple=True), default=[])
+    geoLocation: Mapped[ARRAY[int]] = mapped_column(ARRAY(Integer, as_tuple=True), default=[])
     time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     contactName: Mapped[str] = mapped_column(String(50))
     contactPhone: Mapped[str] = mapped_column(String(20))

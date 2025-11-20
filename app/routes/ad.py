@@ -15,6 +15,7 @@ userDep = Annotated[User, Depends(get_current_user)]
 
 @router.post("/ads/create")
 async def create_ad(data: AdCreate, session: sessionDep, current_user: userDep):
+    print(data)
     try:
         time_obj = datetime.strptime(data.time, "%d.%m.%Y %H:%M")
     except ValueError:
@@ -47,7 +48,6 @@ async def create_ad(data: AdCreate, session: sessionDep, current_user: userDep):
 
 @router.post("/ads")
 async def get_ads(session: sessionDep, filters: AdFilters):
-    print(filters)
     try:
         query = select(Ad)
 
@@ -61,6 +61,10 @@ async def get_ads(session: sessionDep, filters: AdFilters):
             query = query.where(Ad.size == filters.size)
         if filters.danger:
             query = query.where(Ad.danger == filters.danger)
+        if filters.region:
+            ... # HERE
+        if filters.geoloc:
+            ... # AND HERE
 
         query = query.order_by(Ad.created_at.desc()).limit(50)
         result = await session.scalars(query)

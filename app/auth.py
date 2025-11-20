@@ -1,7 +1,7 @@
 from jose import jwt, JWTError
 from passlib.hash import bcrypt
 from datetime import datetime, timedelta, timezone
-from .config import SECRET_KEY, ALGORITHM, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_USER, APP_URL, EMAIL_FROM
+from config import SECRET_KEY, ALGORITHM, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_USER, APP_URL, EMAIL_FROM
 import smtplib
 from email.mime.text import MIMEText
 

@@ -32,7 +32,7 @@ class AdCreate(BaseModel):
     nickname: str = ''
     danger: Literal["danger", "safe", "unknown"]
     location: str = ''
-    geoLocation: List[str] = []
+    geoLocation: List[int] = []
     time: str
     contactName: str
     contactPhone: str
@@ -50,7 +50,7 @@ class AdOut(BaseModel):
     nickname: str = ''
     danger: str
     location: str = ''
-    geoLocation: List[str] = []
+    geoLocation: List[int] = []
     time: datetime
     contactName: str
     contactPhone: str
@@ -66,6 +66,9 @@ class AdFilters(BaseModel):
     breed: Optional[str] = None
     size: Optional[str] = None
     danger: Optional[str] = None
+    region: Optional[str] = None
+    geoloc: Optional[List[str]] = None
+    radius: Optional[int] = None
 
 class UpdateName(BaseModel):
     name: str = Field(min_length=1,max_length=50)

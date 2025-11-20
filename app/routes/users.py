@@ -6,11 +6,11 @@ from typing import Annotated
 from dependencies import get_current_user
 from sqlalchemy.ext.asyncio import AsyncSession
 import random
-from ..models import User
-from ..schemas import UserRegister, UserLogin, UpdateEmail, UpdateName, UpdatePhone, UpdatePassword
-from ..database import get_session
-from ..auth import create_token, verify_password, hash_password, send_verification_email
-from ..config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, SECRET_KEY, ALGORITHM
+from models import User
+from schemas import UserRegister, UserLogin, UpdateEmail, UpdateName, UpdatePhone, UpdatePassword
+from database import get_session
+from auth import create_token, verify_password, hash_password, send_verification_email
+from config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, SECRET_KEY, ALGORITHM
 
 router = APIRouter()
 
@@ -48,8 +48,6 @@ async def login(response: Response, data: UserLogin, session: sessionDep):
     user = await session.scalar(select(User).where(User.email == data.email))
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Неверный email или пароль")
-    if not user.is_verified:
-        raise HTTPException(status_code=400, detail="Email не подтверждён. Проверьте почту")
     
     access_token = create_token({"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     refresh_token = create_token({"sub": str(user.id)}, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
@@ -87,12 +85,11 @@ async def verify_email(token: str, session: sessionDep):
         phone=phone,
         name=name,
         role="user",
-        is_verified=True
     )
     session.add(new_user)
     await session.commit()
 
-    return {"success": True, "message": "Аккаунт успешно создан! Теперь можно войти."}
+    return {"message": "Аккаунт успешно создан! Теперь можно войти."}
 
 @router.get('/me')
 async def get_me(request: Request):
@@ -101,7 +98,7 @@ async def get_me(request: Request):
         raise HTTPException(status_code=401, detail='Нет access токена')
 
     try:
-        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
+        jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
 
         return {'success': True}
     except JWTError:
@@ -130,6 +127,7 @@ async def refresh_token(request: Request, response: Response):
 async def logout(response: Response):
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
+
     return {"success": True, "message": "Вы вышли"}
 
 @router.get("/user")
@@ -174,6 +172,7 @@ async def update_name(
 @router.put("/user/email")
 async def update_email(
     data: UpdateEmail,
+    response: Response,
     session: sessionDep,
     current_user: userDep,
 ):
@@ -182,9 +181,12 @@ async def update_email(
     )
     if existing and existing.id != current_user.id:
         return {"success": False, "message": "Email уже занят"}
+    
+    # ПРИСЫЛАТЬ ВЕРИФИКАЦИЮ НА НОВУЮ ПОЧТУ
 
-    current_user.email = data.email
-    await session.commit()
+    response.delete_cookie('access_token')
+    response.delete_cookie('refresh_token')
+
     return {"success": True}
 
 @router.put("/user/phone")
