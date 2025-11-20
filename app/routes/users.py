@@ -7,9 +7,9 @@ from ..dependencies import get_current_user
 from sqlalchemy.ext.asyncio import AsyncSession
 import random
 from ..models import User
-from ..schemas import UserRegister, UserLogin, UserOut, UpdateEmail, UpdateName, UpdatePhone, UpdatePassword
+from ..schemas import UserRegister, UserLogin, UpdateEmail, UpdateName, UpdatePhone, UpdatePassword
 from ..database import get_session
-from ..auth import create_token, verify_password, hash_password
+from ..auth import create_token, verify_password, hash_password, send_verification_email
 from ..config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, SECRET_KEY, ALGORITHM
 
 router = APIRouter()
@@ -18,50 +18,81 @@ sessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 names = ["Альфа", "Барсик", "Крош", "Стрелка", "Мурзик"]
 
-
 @router.post("/register")
 async def register(user: UserRegister, session: sessionDep):
     existing = await session.scalar(select(User).where(User.email == user.email))
     if existing:
-        raise HTTPException(
-            status_code=400, detail="Email уже зарегистрирован")
+        raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
 
-    user_name = user.name
-    if not user_name:
-        name = random.choice(names)
-        num = random.randint(1, 999)
-        user_name = f"{name}{num}"
-    new_user = User(
-        email=user.email,
-        password_hash=hash_password(user.password),
-        phone=user.phone,
-        name=user_name,
-        role="user",
+    user_name = user.name or f"{random.choice(names)}{random.randint(1, 999)}"
+
+    password_hash = hash_password(user.password)
+
+    verify_token = create_token(
+        {
+            "email": user.email,
+            "password_hash": password_hash,
+            "phone": user.phone or "",
+            "name": user_name,
+            "type": "verify"
+        },
+        timedelta(minutes=30)
     )
-    session.add(new_user)
-    await session.commit()
 
-    return {"success": True, "message": "Пользователь зарегистрирован"}
+    await send_verification_email(user.email, verify_token)
 
+    return {"success": True, "message": "Проверьте email для завершения регистрации"}
 
 @router.post("/login")
 async def login(response: Response, data: UserLogin, session: sessionDep):
     user = await session.scalar(select(User).where(User.email == data.email))
     if not user or not verify_password(data.password, user.password_hash):
-        raise HTTPException(
-            status_code=400, detail="Неверный email или пароль")
-
-    access_token = create_token({"sub": str(user.id)}, timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    refresh_token = create_token(
-        {"sub": str(user.id)}, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+        raise HTTPException(status_code=400, detail="Неверный email или пароль")
+    if not user.is_verified:
+        raise HTTPException(status_code=400, detail="Email не подтверждён. Проверьте почту")
+    
+    access_token = create_token({"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    refresh_token = create_token({"sub": str(user.id)}, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
 
     response.set_cookie(key="access_token", value=access_token, httponly=True)
-    response.set_cookie(key="refresh_token",
-                        value=refresh_token, httponly=True)
+    response.set_cookie(key="refresh_token",value=refresh_token, httponly=True)
 
     return {"success": True, "message": "Вход выполнен"}
 
+@router.get("/verify")
+async def verify_email(token: str, session: sessionDep):
+    if not token:
+        raise HTTPException(status_code=400, detail="Токен не передан")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "verify":
+            raise HTTPException(status_code=400, detail="Неверный тип токена")
+
+        email = payload["email"]
+        password_hash = payload["password_hash"]
+        phone = payload.get("phone", "")
+        name = payload.get("name", "Пользователь")
+
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Ссылка недействительна или истекла")
+
+    existing = await session.scalar(select(User).where(User.email == email))
+    if existing:
+        return {"success": True, "message": "Аккаунт уже активирован. Можно входить!"}
+
+    new_user = User(
+        email=email,
+        password_hash=password_hash,
+        phone=phone,
+        name=name,
+        role="user",
+        is_verified=True
+    )
+    session.add(new_user)
+    await session.commit()
+
+    return {"success": True, "message": "Аккаунт успешно создан! Теперь можно войти."}
 
 @router.get('/me')
 async def get_me(request: Request):
@@ -76,7 +107,6 @@ async def get_me(request: Request):
     except JWTError:
         raise HTTPException(status_code=401, detail='Токен недействителен или истёк')
 
-
 @router.get("/refresh")
 async def refresh_token(request: Request, response: Response):
     from jose import jwt
@@ -84,7 +114,6 @@ async def refresh_token(request: Request, response: Response):
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Нет refresh токена")
-
     try:
         payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
@@ -92,19 +121,16 @@ async def refresh_token(request: Request, response: Response):
             status_code=401, detail="Недействительный refresh токен")
 
     user_id = payload.get("sub")
-    new_access = create_token({"sub": user_id}, timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    new_access = create_token({"sub": user_id}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     response.set_cookie(key="access_token", value=new_access, httponly=True)
 
     return {"success": True, "message": "Access токен обновлён"}
-
 
 @router.get("/logout")
 async def logout(response: Response):
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     return {"success": True, "message": "Вы вышли"}
-
 
 @router.get("/user")
 async def get_user(request: Request, session: sessionDep):
@@ -135,7 +161,6 @@ async def get_user(request: Request, session: sessionDep):
 
 userDep = Annotated[User, Depends(get_current_user)]
 
-
 @router.put("/user/name")
 async def update_name(
     data: UpdateName,
@@ -145,7 +170,6 @@ async def update_name(
     current_user.name = data.name
     await session.commit()
     return {"success": True}
-
 
 @router.put("/user/email")
 async def update_email(

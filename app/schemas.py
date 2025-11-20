@@ -9,11 +9,9 @@ class UserRegister(BaseModel):
     phone: Optional[str] = Field(None,pattern= r"^\+7\d{10}$")
     name: Optional[str] = None
 
-
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
-
 
 class UserOut(BaseModel):
     name: str
