@@ -28,16 +28,16 @@ class AdCreate(BaseModel):
     breed: Literal["labrador", "german_shepherd", "poodle", "metis"]
     color: str
     size: Literal["little", "medium", "big"]
-    distincts: Optional[str] = None
-    nickname: Optional[str] = None
+    distincts: str = ''
+    nickname: str = ''
     danger: Literal["danger", "safe", "unknown"]
-    location: Optional[str] = None  # may be null due to errors when fetching string location from front
-    geoLocation: Optional[List[str]] = None  # may be null due to errors when fetching geoLocation from front
+    location: str = ''
+    geoLocation: List[str] = []
     time: str
     contactName: str
     contactPhone: str
     contactEmail: EmailStr
-    extras: Optional[str] = None
+    extras: str = ''
         
 class AdOut(BaseModel):
     id: int
@@ -46,16 +46,16 @@ class AdOut(BaseModel):
     breed: str
     color: str
     size: str
-    distincts: Optional[str]
-    nickname: Optional[str]
+    distincts: str = ''
+    nickname: str = ''
     danger: str
-    location: Optional[str]
-    geoLocation: Optional[List[str]]
+    location: str = ''
+    geoLocation: List[str] = []
     time: datetime
     contactName: str
     contactPhone: str
     contactEmail: str
-    extras: Optional[str]
+    extras: str = ''
 
     class Config:
         from_attributes = True
@@ -74,7 +74,7 @@ class UpdateEmail(BaseModel):
     email: EmailStr
 
 class UpdatePhone(BaseModel):
-    phone: Optional[str] = Field(None, pattern=r"^\+7\d{10}$")
+    phone: str = Field(None, pattern=r"^\+7\d{10}$")
 
 class UpdatePassword(BaseModel):
     curPassword: str = Field(..., min_length=8)

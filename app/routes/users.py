@@ -3,7 +3,7 @@ from sqlalchemy import select
 from jose import JWTError, jwt
 from datetime import timedelta
 from typing import Annotated
-from ..dependencies import get_current_user
+from dependencies import get_current_user
 from sqlalchemy.ext.asyncio import AsyncSession
 import random
 from ..models import User

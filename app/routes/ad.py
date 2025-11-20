@@ -4,10 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Annotated
 from datetime import datetime
 
-from ..dependencies import get_current_user
-from ..database import get_session
-from ..models import Ad, User
-from ..schemas import AdOut, AdCreate, AdFilters
+from dependencies import get_current_user
+from database import get_session
+from models import Ad, User
+from schemas import AdOut, AdCreate, AdFilters
 
 router = APIRouter()
 sessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -45,8 +45,9 @@ async def create_ad(data: AdCreate, session: sessionDep, current_user: userDep):
 
     return {"success": True, "ad_id": ad.id}
 
-@router.get("/ads")
-async def get_ads(session: sessionDep, filters: AdFilters = Depends()):
+@router.post("/ads")
+async def get_ads(session: sessionDep, filters: AdFilters):
+    print(filters)
     try:
         query = select(Ad)
 

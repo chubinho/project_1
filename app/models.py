@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import DateTime, String, Text, ForeignKey, ARRAY
-from .database import Base
+from database import Base
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -33,16 +33,16 @@ class Ad(Base):
     breed: Mapped[str] = mapped_column(String(30))
     color: Mapped[str] = mapped_column(String(20))
     size: Mapped[str] = mapped_column(String(10))
-    distincts: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    nickname: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    distincts: Mapped[str] = mapped_column(Text, default='')
+    nickname: Mapped[str] = mapped_column(String(50), default='')
     danger: Mapped[str] = mapped_column(String(10))
-    location: Mapped[str] = mapped_column(String(100), nullable=True)
-    geoLocation: Mapped[ARRAY[str]] = mapped_column(ARRAY(String, as_tuple=True), nullable=True)
+    location: Mapped[str] = mapped_column(String(100), default='')
+    geoLocation: Mapped[ARRAY[str]] = mapped_column(ARRAY(String, as_tuple=True), default=[])
     time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     contactName: Mapped[str] = mapped_column(String(50))
     contactPhone: Mapped[str] = mapped_column(String(20))
     contactEmail: Mapped[str] = mapped_column(String(100))
-    extras: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    extras: Mapped[str] = mapped_column(Text, default='')
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
