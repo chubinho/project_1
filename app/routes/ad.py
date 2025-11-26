@@ -11,7 +11,6 @@ router = APIRouter(tags=["Ads"])
 
 @router.post("/ads/create")
 async def create_ad(data: AdCreate, session: sessionDep, current_user: userDep):
-    print(data)
     try:
         time_obj = datetime.strptime(data.time, "%d.%m.%Y %H:%M")
     except ValueError:
