@@ -1,3 +1,4 @@
+from typing import Annotated
 from fastapi import Depends, HTTPException, Request
 from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -5,7 +6,10 @@ from database import get_session
 from models import User
 from config import SECRET_KEY, ALGORITHM
 
-async def get_current_user(request: Request, session: AsyncSession = Depends(get_session)):
+sessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+
+async def get_current_user(request: Request, session: sessionDep):
     token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=401, detail="Нет access токена")
@@ -21,3 +25,6 @@ async def get_current_user(request: Request, session: AsyncSession = Depends(get
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
     return user
+
+
+userDep = Annotated[User, Depends(get_current_user)]

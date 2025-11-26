@@ -1,17 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, Annotated
 from datetime import datetime
 
-from dependencies import get_current_user
-from database import get_session
-from models import Ad, User
+from dependencies import sessionDep, userDep
+from models import Ad
 from schemas import AdOut, AdCreate, AdFilters
 
-router = APIRouter()
-sessionDep = Annotated[AsyncSession, Depends(get_session)]
-userDep = Annotated[User, Depends(get_current_user)]
+router = APIRouter(tags=["Ads"])
+
 
 @router.post("/ads/create")
 async def create_ad(data: AdCreate, session: sessionDep, current_user: userDep):
@@ -37,7 +33,7 @@ async def create_ad(data: AdCreate, session: sessionDep, current_user: userDep):
         contactName=data.contactName,
         contactPhone=data.contactPhone,
         contactEmail=data.contactEmail,
-        extras=data.extras
+        extras=data.extras,
     )
 
     session.add(ad)
@@ -45,6 +41,7 @@ async def create_ad(data: AdCreate, session: sessionDep, current_user: userDep):
     await session.refresh(ad)
 
     return {"success": True, "ad_id": ad.id}
+
 
 @router.post("/ads")
 async def get_ads(session: sessionDep, filters: AdFilters):
@@ -62,9 +59,9 @@ async def get_ads(session: sessionDep, filters: AdFilters):
         if filters.danger:
             query = query.where(Ad.danger == filters.danger)
         if filters.region:
-            ... # HERE
+            ...  # HERE
         if filters.geoloc:
-            ... # AND HERE
+            ...  # AND HERE
 
         query = query.order_by(Ad.created_at.desc()).limit(50)
         result = await session.scalars(query)
@@ -74,14 +71,13 @@ async def get_ads(session: sessionDep, filters: AdFilters):
     except Exception as e:
         print("Ошибка в /ads:", e)
         return {"success": False, "message": "Ошибка на сервере"}
-    
-@router.get("/my/ads")
-async def get_my_ads(
-    request: Request,
-    session: sessionDep,
-    current_user: userDep
-):
-    query = select(Ad).where(Ad.user_id == current_user.id).order_by(Ad.created_at.desc())
+
+
+@router.get("/ads/my")
+async def get_my_ads(request: Request, session: sessionDep, current_user: userDep):
+    query = (
+        select(Ad).where(Ad.user_id == current_user.id).order_by(Ad.created_at.desc())
+    )
     result = await session.scalars(query)
     ads = result.all()
     ads_out = [AdOut.model_validate(ad) for ad in ads]

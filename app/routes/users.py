@@ -3,20 +3,29 @@ from sqlalchemy import select
 from jose import JWTError, jwt
 from datetime import timedelta
 from typing import Annotated
-from dependencies import get_current_user
-from sqlalchemy.ext.asyncio import AsyncSession
+from dependencies import get_current_user, sessionDep, userDep
 import random
 from models import User
-from schemas import UserRegister, UserLogin, UpdateEmail, UpdateName, UpdatePhone, UpdatePassword
-from database import get_session
+from schemas import (
+    UserRegister,
+    UserLogin,
+    UpdateEmail,
+    UpdateName,
+    UpdatePhone,
+    UpdatePassword,
+)
 from auth import create_token, verify_password, hash_password, send_verification_email
-from config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, SECRET_KEY, ALGORITHM
+from config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    SECRET_KEY,
+    ALGORITHM,
+)
 
-router = APIRouter()
-
-sessionDep = Annotated[AsyncSession, Depends(get_session)]
+router = APIRouter(tags=["Users"])
 
 names = ["Альфа", "Барсик", "Крош", "Стрелка", "Мурзик"]
+
 
 @router.post("/register")
 async def register(user: UserRegister, session: sessionDep):
@@ -34,28 +43,34 @@ async def register(user: UserRegister, session: sessionDep):
             "password_hash": password_hash,
             "phone": user.phone or "",
             "name": user_name,
-            "type": "verify"
+            "type": "verify",
         },
-        timedelta(minutes=30)
+        timedelta(minutes=30),
     )
 
     await send_verification_email(user.email, verify_token)
 
     return {"success": True, "message": "Проверьте email для завершения регистрации"}
 
+
 @router.post("/login")
 async def login(response: Response, data: UserLogin, session: sessionDep):
     user = await session.scalar(select(User).where(User.email == data.email))
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Неверный email или пароль")
-    
-    access_token = create_token({"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    refresh_token = create_token({"sub": str(user.id)}, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+
+    access_token = create_token(
+        {"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    refresh_token = create_token(
+        {"sub": str(user.id)}, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    )
 
     response.set_cookie(key="access_token", value=access_token, httponly=True)
-    response.set_cookie(key="refresh_token",value=refresh_token, httponly=True)
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
 
-    return {"success": True, "message": "Вход выполнен"}
+    return {"success": True, "message": "Вход выполнен"}  # ВОЗВРАЩАТЬ "role"
+
 
 @router.get("/verify")
 async def verify_email(token: str, session: sessionDep):
@@ -73,7 +88,9 @@ async def verify_email(token: str, session: sessionDep):
         name = payload.get("name", "Пользователь")
 
     except JWTError:
-        raise HTTPException(status_code=400, detail="Ссылка недействительна или истекла")
+        raise HTTPException(
+            status_code=400, detail="Ссылка недействительна или истекла"
+        )
 
     existing = await session.scalar(select(User).where(User.email == email))
     if existing:
@@ -91,37 +108,39 @@ async def verify_email(token: str, session: sessionDep):
 
     return {"message": "Аккаунт успешно создан! Теперь можно войти."}
 
-@router.get('/me')
+
+@router.get("/me")
 async def get_me(request: Request):
-    access_token = request.cookies.get('access_token')
+    access_token = request.cookies.get("access_token")
     if not access_token:
-        raise HTTPException(status_code=401, detail='Нет access токена')
+        raise HTTPException(status_code=401, detail="Нет access токена")
 
     try:
         jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
 
-        return {'success': True}
+        return {"success": True}  # ВОЗВРАЩАТЬ "role"
     except JWTError:
-        raise HTTPException(status_code=401, detail='Токен недействителен или истёк')
-    
+        raise HTTPException(status_code=401, detail="Токен недействителен или истёк")
+
+
 @router.get("/refresh")
 async def refresh_token(request: Request, response: Response):
-    from jose import jwt
-
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Нет refresh токена")
     try:
         payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
-        raise HTTPException(
-            status_code=401, detail="Недействительный refresh токен")
+        raise HTTPException(status_code=401, detail="Недействительный refresh токен")
 
     user_id = payload.get("sub")
-    new_access = create_token({"sub": user_id}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    new_access = create_token(
+        {"sub": user_id}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
     response.set_cookie(key="access_token", value=new_access, httponly=True)
 
-    return {"success": True, "message": "Access токен обновлён"}
+    return {"success": True, "message": "Access токен обновлён"}  # ВОЗВРАЩАТЬ "role"
+
 
 @router.get("/logout")
 async def logout(response: Response):
@@ -130,10 +149,9 @@ async def logout(response: Response):
 
     return {"success": True, "message": "Вы вышли"}
 
+
 @router.get("/user")
 async def get_user(request: Request, session: sessionDep):
-    from jose import jwt
-
     token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=401, detail="Нет access токена")
@@ -157,12 +175,12 @@ async def get_user(request: Request, session: sessionDep):
         }
     }
 
+
 @router.delete("/user")
 async def delete_user(
-    request: Request,
     response: Response,
     session: sessionDep,
-    current_user: Annotated[User, Depends(get_current_user)]
+    current_user: Annotated[User, Depends(get_current_user)],
 ):
     await session.delete(current_user)
     await session.commit()
@@ -172,17 +190,13 @@ async def delete_user(
 
     return {"success": True, "message": "Аккаунт успешно удален"}
 
-userDep = Annotated[User, Depends(get_current_user)]
 
 @router.put("/user/name")
-async def update_name(
-    data: UpdateName,
-    session: sessionDep,
-    current_user: userDep
-):
+async def update_name(data: UpdateName, session: sessionDep, current_user: userDep):
     current_user.name = data.name
     await session.commit()
     return {"success": True}
+
 
 @router.put("/user/email")
 async def update_email(
@@ -191,38 +205,37 @@ async def update_email(
     session: sessionDep,
     current_user: userDep,
 ):
-    existing = await session.scalar(
-        select(User).where(User.email == data.email)
-    )
+    existing = await session.scalar(select(User).where(User.email == data.email))
     if existing and existing.id != current_user.id:
         return {"success": False, "message": "Email уже занят"}
-    
+
     # ПРИСЫЛАТЬ ВЕРИФИКАЦИЮ НА НОВУЮ ПОЧТУ
 
-    response.delete_cookie('access_token')
-    response.delete_cookie('refresh_token')
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
 
     return {"success": True}
 
+
 @router.put("/user/phone")
-async def update_phone(
-    data: UpdatePhone,
-    session: sessionDep,
-    current_user: userDep
-):
+async def update_phone(data: UpdatePhone, session: sessionDep, current_user: userDep):
     current_user.phone = data.phone
     await session.commit()
     return {"success": True}
 
+
 @router.put("/user/password")
 async def update_password(
-    data: UpdatePassword,
-    session: sessionDep,
-    current_user: userDep
+    data: UpdatePassword, session: sessionDep, current_user: userDep
 ):
     if not verify_password(data.curPassword, current_user.password_hash):
         return {"success": False, "message": "Неверный текущий пароль"}
-    
+
     current_user.password_hash = hash_password(data.newPassword)
     await session.commit()
     return {"success": True}
+
+
+# ДОБАВИТЬ РУЧКУ /user/password/reset
+# ПРИНИМАЕТ "email", "new_password"
+# ПРИСЫЛАЕТ НА ПОЧТУ ПОЛЬЗОВАТЕЛЯ ССЫЛКУ, ПЕРЕЙДЯ ПО КОТОРОЙ ЕГО ПАРОЛЬ МЕНЯЕТСЯ НА НОВЫЙ, УКАЗАННЫЙ ИМ В "new_password"
